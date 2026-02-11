@@ -31,7 +31,6 @@
         let container;
         let camera, scene, renderer, controls;
         let water, sun, sky;
-        let house;
         let mat;
         let sharkModel = null;
         let sharkAnimations = [];
@@ -1946,18 +1945,28 @@
                 campfireEffect = new CampfireEffect(yacht, firePos, 0.5);
             });
 
-            // Load House Model
+            // House Model - Positioned to the right of the yacht
             const houseLoader = new GLTFLoader();
             houseLoader.load('./models/house.glb', (gltf) => {
-                house = gltf.scene;
-                house.position.set(60, -3.0, 0); // Positioned to the right of the yacht (yacht is at 0, -3, 0)
-                house.rotation.y = Math.PI; 
-                house.scale.setScalar(5.5); 
+                const house = gltf.scene;
+                // Yacht is at (0, -3.0, 0). Place house to the right (+X)
+                house.position.set(60, -3.0, 0); 
+                house.scale.setScalar(8.0); // Initial scale guess
+                house.rotation.y = -Math.PI / 2; // Face the yacht
+                
+                house.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
                 scene.add(house);
                 console.log('Loaded house model');
             }, undefined, (error) => {
                 console.error('Error loading house model:', error);
             });
+
 
 
             // Palm Trees & Bushes removed
