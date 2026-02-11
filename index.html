@@ -7,11 +7,65 @@
     <title>3D Beach Scene - MIB</title>
     <!-- Deployed to sylphold.com/sea -->
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; font-family: sans-serif; }
         canvas { display: block; }
+        
+        /* Loading Screen Styles */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        .loading-title {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .progress-container {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #00d2ff;
+            box-shadow: 0 0 15px #00d2ff;
+            transition: width 0.3s ease-out;
+        }
+        
+        .loading-text {
+            color: #87CEEB;
+            font-size: 14px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
+    <div id="loading-overlay">
+        <div class="loading-title">SEA PROJECT</div>
+        <div class="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <div id="loading-text" class="loading-text">Loading Assets: 0%</div>
+    </div>
     <script type="importmap">
         {
             "imports": {
@@ -1750,6 +1804,32 @@
         }
 
         function init() {
+            // Loading Manager
+            const loadingManager = new THREE.LoadingManager();
+            const progressBar = document.getElementById('progress-bar');
+            const loadingText = document.getElementById('loading-text');
+            const loadingOverlay = document.getElementById('loading-overlay');
+
+            loadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+                const progress = (itemsLoaded / itemsTotal) * 100;
+                progressBar.style.width = progress + '%';
+                loadingText.innerText = 'Loading Assets: ' + Math.round(progress) + '%';
+            };
+
+            loadingManager.onLoad = function () {
+                setTimeout(() => {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 500);
+                }, 500);
+                console.log('All assets loaded.');
+            };
+
+            loadingManager.onError = function (url) {
+                console.error('Error loading: ' + url);
+            };
+
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1773,7 +1853,7 @@
                 {
                     textureWidth: 1024,
                     textureHeight: 1024,
-                    waterNormals: new THREE.TextureLoader().load('./libs/textures/waternormals.jpg', function (texture) {
+                    waterNormals: new THREE.TextureLoader(loadingManager).load('./libs/textures/waternormals.jpg', function (texture) {
                         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
                     }),
                     sunDirection: new THREE.Vector3(),
@@ -1827,10 +1907,12 @@
             const woodTex = createWoodTexture();
             const leafTex = createLeafTexture();
 
+            // Main GLTF Loader
+            const gltfLoader = new GLTFLoader(loadingManager);
+
             // Load Tropical Island Model (Removed)
             /*
-            const islandLoader = new GLTFLoader();
-            islandLoader.load('./models/tropical_island.glb', (gltf) => {
+            gltfLoader.load('./models/tropical_island.glb', (gltf) => {
                 const island = gltf.scene;
                 island.position.set(0, 0, 0); // Set Y to 0 as requested
                 island.scale.setScalar(2.0); // Doubled size
@@ -1872,7 +1954,6 @@
             */
 
             // Load Shark Model and then create shark school
-            const gltfLoader = new GLTFLoader();
             gltfLoader.load('./models/shark.glb', (gltf) => {
                 sharkModel = gltf.scene;
                 sharkAnimations = gltf.animations;
@@ -1883,8 +1964,7 @@
             });
 
             // Load Whale Model and create whale school
-            const whaleLoader = new GLTFLoader();
-            whaleLoader.load('./models/whale.glb', (gltf) => {
+            gltfLoader.load('./models/whale.glb', (gltf) => {
                 whaleModel = gltf.scene;
                 whaleAnimations = gltf.animations;
 
@@ -1897,8 +1977,7 @@
 
             // Luxury Yacht
             // Try to load a GLB model, fallback to procedural yacht
-            const yachtLoader = new GLTFLoader();
-            yachtLoader.load('./models/yacht.glb', (gltf) => {
+            gltfLoader.load('./models/yacht.glb', (gltf) => {
                 yacht = gltf.scene;
                 yacht.position.set(0, -3.0, 0); // Centered at origin
                 yacht.rotation.y = Math.PI; // Facing forward (-Z)
