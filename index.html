@@ -1949,22 +1949,46 @@
             const houseLoader = new GLTFLoader();
             houseLoader.load('./models/house.glb', (gltf) => {
                 const house = gltf.scene;
-                // Yacht is at (0, -3.0, 0). Place house to the right (+X)
-                house.position.set(60, -3.0, 0); 
-                house.scale.setScalar(8.0); // Initial scale guess
-                house.rotation.y = -Math.PI / 2; // Face the yacht
+                
+                // Center the model's geometry
+                const box = new THREE.Box3().setFromObject(house);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                house.position.x = -center.x;
+                house.position.y = -center.y;
+                house.position.z = -center.z;
+                
+                const houseGroup = new THREE.Group();
+                houseGroup.add(house);
+                
+                // Yacht is at (0, -3.0, 0). Place house group to the right (+X)
+                // Move it further away (150) and a bit up to ensure it's not underwater
+                houseGroup.position.set(150, 5, 0); 
+                houseGroup.scale.setScalar(20.0); // Larger scale for visibility
+                houseGroup.rotation.y = -Math.PI / 2;
                 
                 house.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
+                        // Ensure material is visible
+                        if (child.material) {
+                            child.material.side = THREE.DoubleSide;
+                        }
                     }
                 });
                 
-                scene.add(house);
-                console.log('Loaded house model');
+                scene.add(houseGroup);
+                console.log('Loaded house model, size:', size);
             }, undefined, (error) => {
                 console.error('Error loading house model:', error);
+                // Fallback: Add a large red box so we know where it should be
+                const fallbackGeo = new THREE.BoxGeometry(20, 20, 20);
+                const fallbackMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                const fallback = new THREE.Mesh(fallbackGeo, fallbackMat);
+                fallback.position.set(150, 10, 0);
+                scene.add(fallback);
             });
 
 
